@@ -163,6 +163,34 @@ public class SequenceUtil {
         return isValidBase(b, VALID_BASES_UPPER) || isValidBase(b, VALID_BASES_LOWER);
     }
 
+    /**
+     * Checks whether a range with a byte array contains only valid IUPAC codes.
+     * @param bases the array to test.
+     * @param start first position to test.
+     * @param end last position to test (exclusive).
+     * @return {@code true} iff  every base in the range is a valid IUPAC code. For empty ranges
+     * it returns true.
+     * @throws IndexOutOfBoundsException if the range points outside the boundaries of the input array.
+     */
+    public static boolean areValidIupacCodes(final byte[] bases, final int start, final int end) {
+       for (int i = start; i < end; i++) {
+           if (SequenceUtil.bases[bases[i]] == NON_IUPAC_CODE) {
+               return false;
+           }
+       }
+       return true;
+    }
+
+    public static boolean areValidIupacCodes(final byte[] bases) {
+        for(int idx : bases) {
+            if (SequenceUtil.bases[idx] == NON_IUPAC_CODE) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+
     private static boolean isValidBase(final byte b, final byte[] validBases) {
         for (final byte validBase : validBases) {
             if (b == validBase) return true;
@@ -1117,4 +1145,5 @@ public class SequenceUtil {
             bases[i] = VALID_BASES_UPPER[random.nextInt(VALID_BASES_UPPER.length)];
         }
     }
+
 }

@@ -115,6 +115,8 @@ import java.util.Collection;
  * @author ebanks, depristo
  */
 public class Allele implements Comparable<Allele>, Serializable {
+
+
     public static final long serialVersionUID = 1L;
 
     private static final byte[] EMPTY_ALLELE_BASES = new byte[0];
@@ -250,6 +252,8 @@ public class Allele implements Comparable<Allele>, Serializable {
                 case 'N': case 'n' : return isRef ? REF_N : ALT_N;
                 default: throw new IllegalArgumentException("Illegal base [" + (char)bases[0] + "] seen in the allele");
             }
+        } else if (Breakend.looksLikeABreakend(bases)) {
+            return BreakendAllele.of(bases);
         } else {
             return new Allele(bases, isRef);
         }
@@ -314,6 +318,7 @@ public class Allele implements Comparable<Allele>, Serializable {
     /**
      * @param bases  bases representing an allele
      * @return true if the bases represent a symbolic allele in breakpoint notation, (ex: G]17:198982] or ]13:123456]T )
+     * @deprecated use {@link Breakend#looksLikeABreakend}
      */
     public static boolean wouldBeBreakpoint(final byte[] bases) {
         if (bases.length <= 1) {
@@ -327,6 +332,15 @@ public class Allele implements Comparable<Allele>, Serializable {
         }
         return false;
     }
+
+    public boolean looksLikeABreakend() {
+        return Breakend.looksLikeABreakend(bases);
+    }
+
+    public boolean looksLikeASingleBreakend() {
+        return Breakend.looksLikeABreakend(bases);
+    }
+
     /**
      * @param bases  bases representing an allele
      * @return true if the bases represent a symbolic allele in single breakend notation (ex: .A or A. )
@@ -454,11 +468,48 @@ public class Allele implements Comparable<Allele>, Serializable {
     /** @return true if this Allele is symbolic (i.e. no well-defined base sequence), this includes breakpoints and breakends */
     public boolean isSymbolic()         { return isSymbolic; }
 
-    /** @return true if this Allele is a breakpoint ( ex: G]17:198982] or ]13:123456]T ) */
+    /**
+     * Returns the symbolic ID for this allele if it applies. Otherwise it will return {@code null}.
+     * @return might be {@code null}.
+     */
+    public SymbolicAlleleType getSymbolicType() {
+        if (!isSymbolic) {
+            return null;
+        } else if (looksLikeABreakend()) {
+            return SymbolicAlleleType.BND;
+        } else {
+            final String altString = getBaseString();
+            final int lastIndex = altString.length() - 1;
+            if (altString.charAt(0) != '<' && altString.charAt(lastIndex) != '>') {
+                return null;
+            } else {
+                return SymbolicAlleleType.of(altString.substring(1, lastIndex));
+            }
+        }
+    }
+
+    /** @return true if this Allele is a breakpoint ( ex: G]17:198982] or ]13:123456]T )
+     * @deprecated use {@link #looksLikeABreakend()} or {@link #asBreakend()}.
+     */
+    @Deprecated
     public boolean isBreakpoint()         { return wouldBeBreakpoint(bases); }
 
-    /** @return true if this Allele is a single breakend (ex: .A or A.) */
+    /** @return true if this Allele is a single breakend (ex: .A or A.)
+     * @deprecated  use {@link #looksLikeASingleBreakend()} or {@link #asBreakend()}
+     */
+    @Deprecated
     public boolean isSingleBreakend()         { return wouldBeSingleBreakend(bases); }
+
+    /**
+     * Returns the equivalent breakend for this allele.
+     *
+     * @return {@code null} if this allele cannot be interpreted as a breakend.
+     * @throws IllegalArgumentException if it looks like a breakend but it has some spec formatting
+     *  issues thus indicating a bug or format violiation somewhere else.
+     */
+    public Breakend asBreakend() {
+        return Breakend.looksLikeABreakend(bases) ? Breakend.of(bases) : null;
+    }
 
     // Returns a nice string representation of this object
     public String toString() {

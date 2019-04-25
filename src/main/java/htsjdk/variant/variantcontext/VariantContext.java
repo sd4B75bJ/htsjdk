@@ -237,7 +237,7 @@ public class VariantContext implements Feature, Serializable {
     protected Type type = null;
 
     /** A set of the alleles segregating in this context */
-    final protected List<Allele> alleles;
+    final protected AlleleSet alleles;
 
     /** A mapping from sampleName -&gt; genotype objects for all genotypes associated with this context */
     protected GenotypesContext genotypes = null;
@@ -328,7 +328,7 @@ public class VariantContext implements Feature, Serializable {
      *
      * @param other the VariantContext to copy
      */
-    protected VariantContext(VariantContext other) {
+    protected VariantContext(final VariantContext other) {
         this(other.getSource(), other.getID(), other.getContig(), other.getStart(), other.getEnd(),
                 other.getAlleles(), other.getGenotypes(), other.getLog10PError(),
                 other.getFiltersMaybeNull(),
@@ -376,7 +376,7 @@ public class VariantContext implements Feature, Serializable {
         if ( alleles == null ) { throw new IllegalArgumentException("Alleles cannot be null"); }
 
         // we need to make this a LinkedHashSet in case the user prefers a given ordering of alleles
-        this.alleles = makeAlleles(alleles);
+        this.alleles = makeAlleles(this, alleles);
 
         if ( genotypes == null || genotypes == NO_GENOTYPES ) {
             this.genotypes = NO_GENOTYPES;
@@ -839,7 +839,7 @@ public class VariantContext implements Feature, Serializable {
      *
      * @return the set of alleles
      */
-    public List<Allele> getAlleles() { return alleles; }
+    public List<Allele> getAlleles() { return alleles.allAlleles(); }
 
     /**
      * Gets the alternate alleles.  This method should return all the alleles present at the location,
@@ -849,7 +849,7 @@ public class VariantContext implements Feature, Serializable {
      * @return the set of alternate alleles
      */
     public List<Allele> getAlternateAlleles() {
-        return alleles.subList(1, alleles.size());
+        return alleles.alternativeAlleles();
     }
 
     /**
@@ -876,7 +876,7 @@ public class VariantContext implements Feature, Serializable {
      * @throws IllegalArgumentException if i is invalid
      */
     public Allele getAlternateAllele(int i) {
-        return alleles.get(i+1);
+        return alleles.alternativeAlleles(i);
     }
 
     /**
@@ -1244,7 +1244,7 @@ public class VariantContext implements Feature, Serializable {
     }
 
     public void validateChromosomeCounts() {
-        final int numberOfAlternateAlleles = alleles.size() - 1;
+        final int numberOfAlternateAlleles = alleles.numberOfAlternativeAlleles();
         validateAttributeIsExpectedSize(VCFConstants.ALLELE_COUNT_KEY, numberOfAlternateAlleles);
         validateAttributeIsExpectedSize(VCFConstants.ALLELE_FREQUENCY_KEY, numberOfAlternateAlleles);
 
@@ -1333,7 +1333,7 @@ public class VariantContext implements Feature, Serializable {
 
         boolean alreadySeenRef = false;
 
-        for ( final Allele allele : alleles ) {
+        for ( final Allele allele : alleles.allAlleles() ) {
             // make sure there's only one reference allele
             if ( allele.isReference() ) {
                 if ( alreadySeenRef ) throw new IllegalArgumentException("BUG: Received two reference tagged alleles in VariantContext " + alleles + " this=" + this);
@@ -1392,7 +1392,7 @@ public class VariantContext implements Feature, Serializable {
         type = null;
 
         // do a pairwise comparison of all alleles against the reference allele
-        for ( Allele allele : alleles ) {
+        for ( Allele allele : alleles.allAlleles() ) {
             if ( allele == REF )
                 continue;
 
@@ -1483,7 +1483,7 @@ public class VariantContext implements Feature, Serializable {
     }
 
     // protected basic manipulation routines
-    private static List<Allele> makeAlleles(Collection<Allele> alleles) {
+    private static AlleleSet makeAlleles(Collection<Allele> alleles) {
         final List<Allele> alleleList = new ArrayList<>(alleles.size());
 
         boolean sawRef = false;
@@ -1511,6 +1511,7 @@ public class VariantContext implements Feature, Serializable {
         if ( alleleList.get(0).isNonReference() )
             throw new IllegalArgumentException("Alleles for a VariantContext must contain at least one reference allele: " + alleles);
 
+        return VariantAlleleSet.of(this, alleleList.get(0), alleleList.subList(1, alleleList.size()));
         return alleleList;
     }
 
