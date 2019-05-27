@@ -201,7 +201,6 @@ public class Slice {
                     referenceContext, alignmentStart, alignmentSpan, globalRecordCounter));
         }
     }
-
     public boolean validateRefMD5(final byte[] ref) {
         if (referenceContext.isMultiRef()) {
             throw new SAMException("Cannot verify a slice with multiple references on a single reference.");
